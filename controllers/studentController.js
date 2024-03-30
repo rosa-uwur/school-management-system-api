@@ -5,7 +5,7 @@ function addStudent(primer_nombre, segundo_nombre, otros_nombres, primer_apellid
     reduceImage(foto, (error, fotoComprimida) => {
         if (error) {
             callback(error);
-            return; 
+            return;
         }
         console.log(fotoComprimida.substring(0, 40))
         const query = `INSERT INTO alumno (primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fechaN_alumno, direccion, contacto, cui_alumno, foto, id_padres) 
@@ -22,7 +22,7 @@ function reduceImage(image, callback) {
     const imagenBuffer = Buffer.from(image, 'base64');
     // Comprimir la imagen usando sharp
     sharp(imagenBuffer)
-        .resize({ width: 150, height:150 }) // Cambia el tamaño de la imagen si es necesario
+        .resize({ width: 150, height: 150 }) // Cambia el tamaño de la imagen si es necesario
         .toBuffer()
         .then(compressedImageBuffer => {
             // Convertir la imagen comprimida nuevamente a Base64
@@ -36,7 +36,29 @@ function reduceImage(image, callback) {
 }
 
 
+//consulta los estudiantes asignados en una clase
+function getStudentsInClass(idClass, callback) {
+    const query = 'select b.id_alumno, b.primer_nombre, b.primer_apellido,  a.id_clase from asignacion a inner join alumno b on a.id_alumno = b.id_alumno where a.id_clase = ?';
+    db.query(query, idClass, (error, results) => {
+        if (error) {
+            callback(error, null);
+        } else {
+            if (results.length > 0) {
+                students = results;
+                // students.forEach((student) => {
+                //     student.fechaN_alumno = formatFecha(student.fechaN_alumno);
+                // });
+
+                callback(null, students);
+            } else {
+                callback(null, null); // No se encontró ningún padre con ese CUI
+            }
+        }
+    });
+}
+
 
 module.exports = {
-    addStudent
+    addStudent,
+    getStudentsInClass
 };
