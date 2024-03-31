@@ -132,19 +132,21 @@ app.post('/registroPago',
         check('fecha_pago', 'La fecha de pago es requerida en formato YYYY-MM-DD').custom((value) => {
             const dateFormat = /^\d{4}-\d{2}-\d{2}$/;
             if (!value.match(dateFormat)) {
-              throw new Error('Formato de fecha inválido. Use YYYY-MM-DD.');
+                throw new Error('Formato de fecha inválido. Use YYYY-MM-DD.');
             }
             return true;
-          }),
-        check('monto', 'El monto es requerido y debe ser un número').not().isEmpty().isNumeric().withMessage('El monto debe ser un número válido')
+        }),
+        check('monto', 'El monto es requerido y debe ser un número').not().isEmpty().isNumeric().withMessage('El monto debe ser un número válido'),
+        check('mes_pago', 'El mes de pago debe ser un número entre 1 y 12').notEmpty().isInt({ min: 1, max: 12 }).withMessage('El mes de pago debe ser un número entre 1 y 12'),
+        check('anio_pago', 'El año de pago debe ser un año válido').notEmpty().isInt({ min: 1900, max: new Date().getFullYear() }).withMessage('El año de pago debe ser un año válido'),
     ],
     (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
-        const { id_alumno, tipo_pago, fecha_pago, monto } = req.body;
-        studentPayment(id_alumno, tipo_pago, fecha_pago, monto
+        const { id_alumno, tipo_pago, fecha_pago, monto, mes_pago, anio_pago } = req.body;
+        studentPayment(id_alumno, tipo_pago, fecha_pago, monto, mes_pago, anio_pago
             , (err, result) => {
                 if (err) {
                     console.error('Error al insertar datos de pago:', err);
