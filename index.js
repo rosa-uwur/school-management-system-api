@@ -4,9 +4,11 @@ const { check, validationResult } = require('express-validator');
 const authController = require('./controllers/authController');
 const { addStudent, getStudentsInClass } = require('./controllers/studentController');
 const { addParent, getParentByCui } = require('./controllers/parentController');
-const {addTeacher, getAllTeachers} = require('./controllers/teacherController');
-const {getAllClassesByTeacher} = require('./controllers/classesController');
-const {getStudentGradesByClass, getStudentGrades} = require('./controllers/gradesController');
+const { addTeacher, getAllTeachers } = require('./controllers/teacherController');
+const { getAllClassesByTeacher } = require('./controllers/classesController');
+const { getStudentGradesByClass, getStudentGrades } = require('./controllers/gradesController');
+const { getReceiptInfo } = require('./controllers/receiptController');
+const { studentPayment, getPaymentSolvency } = require('./controllers/paymentController');
 const app = express();
 const PORT = 3000;
 
@@ -32,12 +34,12 @@ app.post('/login', (req, res) => {
             if (err.message === 'El usuario no está activo') {
                 res.status(401).send('El usuario no está activo');
             } else {
-                if(err.message === 'Credenciales de inicio de sesión incorrectas'){
+                if (err.message === 'Credenciales de inicio de sesión incorrectas') {
                     res.status(401).send('Credenciales de inicio de sesión incorrectas');
-                }else{
+                } else {
                     res.status(500).send('Error al realizar la consulta a la base de datos');
                 }
-                
+
             }
             return;
         }
@@ -90,7 +92,7 @@ app.post('/registroAlumnos',
     });
 
 
-    app.post('/registroPadres',
+app.post('/registroPadres',
     [
         check('primer_nombre', 'El primer nombre es obligatorio').not().isEmpty().isAlpha().withMessage('El primer nombre solo debe contener letras'),
         check('segundo_nombre').optional().isAlpha().withMessage('El segundo nombre solo debe contener letras'),
@@ -123,26 +125,33 @@ app.post('/registroAlumnos',
 
 
 
-    app.post('/registroPago',
+app.post('/registroPago',
     [
-        check('id_alumno', 'Debe indicar el alumno a pagar').not().isEmpty().isAlpha().withMessage('El primer nombre solo debe contener letras'),
-        check('tipo_pago', 'El tipo de pago debe ser colegiatura o inscripción').isIn(['colegiatura', 'inscripción']).withMessage('El tipo de pago debe ser colegiatura o inscripción')
-
+        check('id_alumno', 'Debe indicar el alumno a pagar').not().isEmpty().isNumeric().withMessage('El id alumno debe ser numerico'),
+        check('tipo_pago', 'El tipo de pago debe ser colegiatura o inscripción').isIn(['colegiatura', 'inscripción']).withMessage('El tipo de pago debe ser colegiatura o inscripción'),
+        check('fecha_pago', 'La fecha de pago es requerida en formato YYYY-MM-DD').custom((value) => {
+            const dateFormat = /^\d{4}-\d{2}-\d{2}$/;
+            if (!value.match(dateFormat)) {
+              throw new Error('Formato de fecha inválido. Use YYYY-MM-DD.');
+            }
+            return true;
+          }),
+        check('monto', 'El monto es requerido y debe ser un número').not().isEmpty().isNumeric().withMessage('El monto debe ser un número válido')
     ],
     (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
-        const { primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fechaN, telefono, email, cui } = req.body;
-        addParent(primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fechaN, telefono, email, cui
+        const { id_alumno, tipo_pago, fecha_pago, monto } = req.body;
+        studentPayment(id_alumno, tipo_pago, fecha_pago, monto
             , (err, result) => {
                 if (err) {
-                    console.error('Error al insertar datos de padre:', err);
+                    console.error('Error al insertar datos de pago:', err);
                     res.status(500).send('Error al insertar datos en la base de datos');
                 } else {
                     console.log('Datos insertados correctamente');
-                    res.status(200).send('Padre registrado correctamente');
+                    res.status(200).send('Pago registrado correctamente');
                 }
             }
         );
@@ -150,7 +159,9 @@ app.post('/registroAlumnos',
 
 
 
-    app.post('/registroProfesor',
+
+
+app.post('/registroProfesor',
     [
         check('primer_nombre', 'El primer nombre es obligatorio').not().isEmpty().isAlpha().withMessage('El primer nombre solo debe contener letras'),
         check('segundo_nombre').optional().isAlpha().withMessage('El segundo nombre solo debe contener letras'),
@@ -166,7 +177,7 @@ app.post('/registroAlumnos',
             return res.status(400).json({ errors: errors.array() });
         }
         const { primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, telefono, correo } = req.body;
-        addTeacher(  primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, telefono, correo
+        addTeacher(primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, telefono, correo
             , (err, result) => {
                 if (err) {
                     console.error('Error al insertar datos de profesor:', err);
@@ -295,6 +306,55 @@ app.get('/obtenerNotasAlumnoEnClase/:idAlumno&:idClase', [
         }
         if (!clases) {
             return res.status(404).send('No se encontraron notas para el alumno');
+        }
+        return res.status(200).json(clases);
+    });
+});
+
+// Consulta de informacion para recibo
+app.get('/obtenerInformacionRecibo/:idPago', [
+    check('idPago', 'Debe ingresar un id de pago').not().isEmpty()
+], (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const idPago = req.params.idPago;
+
+
+    getReceiptInfo(idPago, (err, clases) => {
+        if (err) {
+            console.error('Error al consultar recibo', err);
+            return res.status(500).send('Error al consultar datos en la base de datos');
+        }
+        if (!clases) {
+            return res.status(404).send('No se encontraron pagos asociados');
+        }
+        return res.status(200).json(clases);
+    });
+});
+
+
+// Consulta de alumnos solventes en una clase
+app.get('/consultaSolvenciaClase/:idClase', [
+    check('idClase', 'Debe ingresar un id de clase').not().isEmpty()
+], (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const idClase = req.params.idClase;
+
+
+    getPaymentSolvency(idClase, (err, clases) => {
+        if (err) {
+            console.error('Error al consultar clase', err);
+            return res.status(500).send('Error al consultar datos en la base de datos');
+        }
+        if (!clases) {
+            return res.status(404).send('No se encontraron alumnos en esa clase');
         }
         return res.status(200).json(clases);
     });
