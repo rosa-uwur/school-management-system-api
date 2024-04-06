@@ -9,8 +9,14 @@ const { getAllClassesByTeacher } = require('./controllers/classesController');
 const { getStudentGradesByClass, getStudentGrades } = require('./controllers/gradesController');
 const { getReceiptInfo } = require('./controllers/receiptController');
 const { studentPayment, getPaymentSolvency } = require('./controllers/paymentController');
+const cors = require('cors');
+
+
 const app = express();
 const PORT = 3000;
+
+// Habilitar CORS para todas las rutas
+app.use(cors());
 
 // Aumentar el límite de tamaño de carga a 10MB para recibir imagenes
 app.use(express.json({ limit: '10mb' }));
