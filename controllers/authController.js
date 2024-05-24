@@ -3,6 +3,7 @@ const db = require('../db');
 
 function loginUser(usuario, contrasena, callback) {
     const query = 'SELECT * FROM usuarios WHERE usuario = ? AND contrasena = ?';
+    
     db.query(query, [usuario, contrasena], (err, results) => {
         if (err) {
             callback(err, null);

@@ -9,6 +9,8 @@ const { getAllClassesByTeacher } = require('./controllers/classesController');
 const { getStudentGradesByClass, getStudentGrades } = require('./controllers/gradesController');
 const { getReceiptInfo } = require('./controllers/receiptController');
 const { studentPayment, getPaymentSolvency } = require('./controllers/paymentController');
+const { addAnuncio, getAllAnuncios } = require('./controllers/announcementController');
+const {consultarAsistencia, anadirAsistencia}  = require('./controllers/asistenciaController');
 const cors = require('cors');
 
 
@@ -18,7 +20,7 @@ const PORT = 3000;
 // Habilitar CORS para todas las rutas
 app.use(cors());
 
-// Aumentar el límite de tamaño de carga a 10MB para recibir imagenes
+// Aumentar el límite de tamano de carga a 10MB para recibir imagenes
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -31,6 +33,7 @@ app.use(bodyParser.json());
 
 app.post('/login', (req, res) => {
     console.log(req.body);
+
     const { usuario, contrasena } = req.body;
 
     authController.loginUser(usuario, contrasena, (err, user) => {
@@ -49,13 +52,13 @@ app.post('/login', (req, res) => {
             }
             return;
         }
-
+        console.log(user)
         // Si se recibe un usuario, se considera que el inicio de sesión es exitoso
-        if (user) {
-            res.send('Inicio de sesión exitoso');
+        if (user.activo) {
+            res.status(200).json({ message: 'Inicio de sesión exitoso', user });
         } else {
             // Si no se recibe un usuario, las credenciales son incorrectas
-            res.status(401).send('Credenciales de inicio de sesión incorrectas');
+            res.status(401).json({ error: 'Credenciales de inicio de sesión incorrectas' });
         }
     });
 });
@@ -144,7 +147,7 @@ app.post('/registroPago',
         }),
         check('monto', 'El monto es requerido y debe ser un número').not().isEmpty().isNumeric().withMessage('El monto debe ser un número válido'),
         check('mes_pago', 'El mes de pago debe ser un número entre 1 y 12').notEmpty().isInt({ min: 1, max: 12 }).withMessage('El mes de pago debe ser un número entre 1 y 12'),
-        check('anio_pago', 'El año de pago debe ser un año válido').notEmpty().isInt({ min: 1900, max: new Date().getFullYear() }).withMessage('El año de pago debe ser un año válido'),
+        check('anio_pago', 'El ano de pago debe ser un ano válido').notEmpty().isInt({ min: 1900, max: new Date().getFullYear() }).withMessage('El ano de pago debe ser un ano válido'),
     ],
     (req, res) => {
         const errors = validationResult(req);
@@ -367,6 +370,147 @@ app.get('/consultaSolvenciaClase/:idClase', [
         return res.status(200).json(clases);
     });
 });
+
+
+
+// Ruta para anadir un anuncio
+app.post('/anuncio', [
+    check('titulo', 'Debe ingresar un título').not().isEmpty(),
+    check('contenido', 'Debe ingresar contenido').not().isEmpty(),
+    check('id_profesor', 'Debe ingresar un id de profesor').isInt().not().isEmpty()
+], (req, res) => {
+    const errors = validationResult(req);
+    console.log('publicaron anuncio')
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    const { titulo, contenido, id_profesor } = req.body;
+
+    addAnuncio(titulo, contenido, id_profesor, (error, results) => {
+        if (error) {
+            return res.status(500).json({ error: error.message });
+        }
+        res.status(201).json({ message: 'Anuncio anadido exitosamente', data: results });
+    });
+});
+
+// Ruta para obtener todos los anuncios
+app.get('/anuncios', (req, res) => {
+    
+    getAllAnuncios((error, results) => {
+        if (error) {
+            return res.status(500).json({ error: error.message });
+        }
+        res.status(200).json({ data: results });
+    });
+});
+
+
+
+app.post('/anadirAsistencia',
+    [
+        check('registrosAsistencia', 'Se esperaba un arreglo de registros de asistencia').isArray({ min: 1 }).withMessage('El arreglo de registros de asistencia no puede estar vacío'),
+        check('registrosAsistencia.*.idAlumno', 'El ID del alumno es obligatorio').notEmpty().isInt().withMessage('El ID del alumno debe ser un número entero'),
+        check('registrosAsistencia.*.idClase', 'El ID de la clase es obligatorio').notEmpty().isInt().withMessage('El ID de la clase debe ser un número entero'),
+        check('registrosAsistencia.*.fechaAsistencia', 'La fecha de asistencia es obligatoria').notEmpty().matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('El formato de la fecha de asistencia debe ser YYYY-MM-DD'),
+        check('registrosAsistencia.*.asistio', 'El campo asistio es obligatorio').notEmpty().isBoolean().withMessage('El campo asistio debe ser un valor booleano')
+    ],
+    (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const registrosAsistencia = req.body.registrosAsistencia;
+        const insertados = [];
+        const errores = [];
+
+        registrosAsistencia.forEach((registro, index) => {
+            const { idAlumno, idClase, fechaAsistencia, asistio } = registro;
+
+            anadirAsistencia(idAlumno, idClase, fechaAsistencia, asistio, (err, result) => {
+                if (err) {
+                    console.error(`Error al insertar datos de asistencia en el índice ${index}:`, err);
+                    errores.push({ index, error: err });
+                } else {
+                    console.log(`Datos de asistencia en el índice ${index} insertados correctamente`);
+                    insertados.push({ index, result });
+                }
+
+                // Si hemos procesado todos los registros, enviamos la respuesta
+                if (insertados.length + errores.length === registrosAsistencia.length) {
+                    if (errores.length > 0) {
+                        res.status(500).json({ errores });
+                    } else {
+                        res.status(200).json({ insertados });
+                    }
+                }
+            });
+        });
+    }
+);
+
+
+
+
+
+// app.post('/ingresoNotas',
+//     [
+//         check('actividadesLibro', 'La puntuación de actividades del libro es obligatoria').not().isEmpty().isInt().withMessage('La puntuación de actividades del libro debe ser un número entero'),
+// check('actividadesCuaderno', 'La puntuación de actividades del cuaderno es obligatoria').not().isEmpty().isInt().withMessage('La puntuación de actividades del cuaderno debe ser un número entero'),
+// check('asistencia', 'La puntuación de asistencia es obligatoria').not().isEmpty().isInt().withMessage('La puntuación de asistencia debe ser un número entero'),
+// check('examen', 'La puntuación del examen es obligatoria').not().isEmpty().isInt().withMessage('La puntuación del examen debe ser un número entero'),
+// check('notaFinal', 'La nota final es obligatoria').not().isEmpty().isInt().withMessage('La nota final debe ser un número entero'),
+// check('anio', 'El ano es obligatorio').not().isEmpty().isInt({ min: 1900, max: 2100 }).withMessage('El ano debe ser un número entero entre 1900 y 2100')
+//     (req, res) => {
+//         const errors = validationResult(req);
+//         if (!errors.isEmpty()) {
+//             return res.status(400).json({ errors: errors.array() });
+//         }
+
+//         const {  } = req.body;
+//         addStudent(
+//             , (err, result) => {
+//                 if (err) {
+//                     console.error('Error al insertar datos:', err);
+//                     res.status(500).send('Error al insertar datos en la base de datos');
+//                 } else {
+//                     console.log('Datos insertados correctamente');
+//                     res.status(200).send('Alumno registrado correctamente');
+//                 }
+//             }
+//         );
+//     });
+
+
+// //ejemplo xd
+//     app.post('/registroAlumnos',
+//     [
+//         check('primer_nombre', 'El primer nombre es obligatorio').not().isEmpty().isAlpha().withMessage('El primer nombre solo debe contener letras'),
+
+//     ],
+//     (req, res) => {
+//         const errors = validationResult(req);
+//         if (!errors.isEmpty()) {
+//             return res.status(400).json({ errors: errors.array() });
+//         }
+
+//         const {  } = req.body;
+//         addStudent(
+//             , (err, result) => {
+//                 if (err) {
+//                     console.error('Error al insertar datos:', err);
+//                     res.status(500).send('Error al insertar datos en la base de datos');
+//                 } else {
+//                     console.log('Datos insertados correctamente');
+//                     res.status(200).send('Alumno registrado correctamente');
+//                 }
+//             }
+//         );
+//     });
+
+
+
 
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);

@@ -21,6 +21,19 @@ const values = [idAlumno, idClase]
 }
 
 
+function addStudentGrades(idAsignacion, actividadesLibro, actividadesCuaderno, asistencia, examen, notaFinal, anio, callback) {
+    const query = 'INSERT INTO notas (id_asignacion, actividades_libro, actividades_cuaderno, asistencia, examen, nota_final, anio) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    const values = [idAsignacion, actividadesLibro, actividadesCuaderno, asistencia, examen, notaFinal, anio];
+
+    db.query(query, values, (error, results) => {
+        if (error) {
+            callback(error, null);
+        } else {
+            callback(null, results.insertId); // Devuelve el ID del nuevo registro insertado
+        }
+    });
+}
+
 //obtener las notas generales de un alumno
 function getStudentGrades(idAlumno, callback) {
     const query = `
