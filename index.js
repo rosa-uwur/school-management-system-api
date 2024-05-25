@@ -76,7 +76,6 @@ app.post('/registroAlumnos',
         check('direccion', 'El campo dirección es obligatorio').not().isEmpty(),
         check('contacto').optional().isEmail().withMessage('El contacto debe ser una dirección de correo electrónico válida'),
         check('cui', 'El cui del alumno es obligatorio').not().isEmpty().isInt().withMessage('El CUI debe ser un número entero'),
-        check('foto').not().isEmpty().isBase64().withMessage('La foto debe estar en base 64'),
         check('id_padre').not().isEmpty().withMessage('El alumno debe estár asociado a un padre.')
     ],
     (req, res) => {
@@ -86,8 +85,8 @@ app.post('/registroAlumnos',
         }
         // Si no hay errores de validación, continuar con la lógica para registrar al alumno
         // Por ejemplo:
-        const { primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fecha_nacimiento, direccion, contacto, cui, foto, id_padre } = req.body;
-        addStudent(primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fecha_nacimiento, direccion, contacto, cui, foto, id_padre
+        const { primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fecha_nacimiento, direccion, contacto, cui,  id_padre } = req.body;
+        addStudent(primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fecha_nacimiento, direccion, contacto, cui, id_padre
             , (err, result) => {
                 if (err) {
                     console.error('Error al insertar datos:', err);
@@ -296,6 +295,24 @@ app.get('/obtenerNotasAlumno/:idAlumno', [
         return res.status(200).json(clases);
     });
 });
+
+
+// Consulta de las notas de un alumno en una determinada clase
+app.get('/consultaProfesores', (req, res) => {
+
+
+    getAllTeachers((err, profesores) => {
+        if (err) {
+            console.error('Error al consultar profesores:', err);
+            return res.status(500).send('Error al consultar datos en la base de datos');
+        }
+        if (!profesores) {
+            return res.status(404).send('No se encontraron datos de profesores');
+        }
+        return res.status(200).json(profesores);
+    });
+});
+
 
 // Consulta de las notas generales de un alumno
 app.get('/obtenerNotasAlumnoEnClase/:idAlumno&:idClase', [

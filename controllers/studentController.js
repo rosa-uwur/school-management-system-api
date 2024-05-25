@@ -1,21 +1,21 @@
 const db = require('../db');
 const sharp = require('sharp');
 
-function addStudent(primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fechaN, direccion, contacto, cui, foto, id_padre, callback) {
-    reduceImage(foto, (error, fotoComprimida) => {
-        if (error) {
-            callback(error);
-            return;
-        }
-        console.log(fotoComprimida.substring(0, 40))
-        const query = `INSERT INTO alumno (primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fechaN_alumno, direccion, contacto, cui_alumno, foto, id_padres) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-        const values = [primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fechaN, direccion, contacto, cui, fotoComprimida, id_padre];
+function addStudent(primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fechaN, direccion, contacto, cui, id_padre, callback) {
+    // reduceImage(foto, (error, ) => {
+    //     if (error) {
+    //         callback(error);
+    //         return;
+    //     }
+    // console.log(fotoComprimida.substring(0, 40))
+    const query = `INSERT INTO alumno (primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fechaN_alumno, direccion, contacto, cui_alumno,  id_padres) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const values = [primer_nombre, segundo_nombre, otros_nombres, primer_apellido, segundo_apellido, fechaN, direccion, contacto, cui, id_padre];
 
-        db.query(query, values, callback);
-    });
+    db.query(query, values, callback);
+};
 
-}
+
 
 
 function reduceImage(image, callback) {
